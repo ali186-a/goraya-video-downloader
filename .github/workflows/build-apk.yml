@@ -1,0 +1,46 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 17 setup
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Gradle setup
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Release APK build
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: APK ka naam theek karein
+        run: cp app/build/outputs/apk/release/app-release.apk Goraya-Video-Downloader.apk
+
+      - name: APK ko artifact ke taur par upload karein
+        uses: actions/upload-artifact@v4
+        with:
+          name: Goraya-Video-Downloader
+          path: Goraya-Video-Downloader.apk
+
+      - name: GitHub Release banayein
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Goraya Video Downloader v1.0.${{ github.run_number }}
+          files: Goraya-Video-Downloader.apk
