@@ -78,4 +78,5 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="📞 0342-1579186" android:textSize="16sp" android:gravity="center" android:autoLink="phone" android:paddingTop="8dp" />
 </LinearLayout>
