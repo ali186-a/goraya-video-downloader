@@ -178,7 +178,7 @@ class MainActivity : AppCompatActivity() {
             }.onFailure {
                 b.progress.progress = 0
                 if (cancelled) setStatus("Cancel kar diya gaya")
-                else setStatus("❌ Error: ${it.message?.take(200)}")
+                else setStatus("❌ Error: ${it.message?.takeLast(300)}")
             }
         }
     }
