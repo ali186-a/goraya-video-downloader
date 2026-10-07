@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
         b.btnDownload.setOnClickListener { startDownload() }
         b.btnCancel.setOnClickListener { cancelDownload() }
+        b.btnWhatsapp.setOnClickListener { openWhatsAppChannel() }
 
         initEngine()
     }
@@ -113,6 +114,15 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Download ----------
     private fun startDownload() {
+        val hasUrl = Regex("https?://\\S+").containsMatchIn(b.etUrl.text?.toString().orEmpty())
+        if (!hasUrl || isWhatsAppConfirmed()) {
+            startDownloadReal()
+            return
+        }
+        showWhatsAppGate { startDownloadReal() }
+    }
+
+    private fun startDownloadReal() {
         val raw = b.etUrl.text?.toString().orEmpty()
         val url = Regex("https?://\\S+").find(raw)?.value
         if (url == null) {
@@ -257,6 +267,50 @@ class MainActivity : AppCompatActivity() {
             }
         } catch (_: Exception) { }
         refreshList()
+    }
+
+    // ---------- WhatsApp Channel ----------
+    private val waUrl = "https://whatsapp.com/channel/0029VaDMPDP11ulIDMh8NS02"
+
+    private fun isWhatsAppConfirmed(): Boolean =
+        getSharedPreferences("goraya", MODE_PRIVATE).getBoolean("wa_confirmed", false)
+
+    private fun openWhatsAppChannel() {
+        val uri = Uri.parse(waUrl)
+        for (pkg in listOf("com.whatsapp", "com.whatsapp.w4b", null)) {
+            try {
+                val i = Intent(Intent.ACTION_VIEW, uri)
+                if (pkg != null) i.setPackage(pkg)
+                startActivity(i)
+                return
+            } catch (e: Exception) {
+                // agla tareeqa aazmayein
+            }
+        }
+        Toast.makeText(this, "Link nahi khul saka", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showWhatsAppGate(onConfirmed: () -> Unit) {
+        val view = layoutInflater.inflate(R.layout.dialog_whatsapp, null)
+        val dialog = android.app.Dialog(this)
+        dialog.requestWindowFeature(android.view.Window.FEATURE_NO_TITLE)
+        dialog.setContentView(view)
+        dialog.window?.setBackgroundDrawable(
+            android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+        )
+        val maxW = (400 * resources.displayMetrics.density).toInt()
+        val w = minOf((resources.displayMetrics.widthPixels * 0.92f).toInt(), maxW)
+        dialog.window?.setLayout(w, android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        view.findViewById<View>(R.id.btnWaJoin).setOnClickListener { openWhatsAppChannel() }
+        view.findViewById<View>(R.id.btnWaConfirm).setOnClickListener {
+            getSharedPreferences("goraya", MODE_PRIVATE)
+                .edit().putBoolean("wa_confirmed", true).apply()
+            dialog.dismiss()
+            onConfirmed()
+        }
+        view.findViewById<View>(R.id.btnWaClose).setOnClickListener { dialog.dismiss() }
+        dialog.show()
     }
 
     // ---------- UI helpers ----------
