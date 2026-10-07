@@ -67,6 +67,7 @@ class MainActivity : AppCompatActivity() {
         b.btnWhatsapp.setOnClickListener { openWhatsAppChannel() }
 
         initEngine()
+        checkForUpdate()
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -311,6 +312,63 @@ class MainActivity : AppCompatActivity() {
         }
         view.findViewById<View>(R.id.btnWaClose).setOnClickListener { dialog.dismiss() }
         dialog.show()
+    }
+
+    // ---------- Update check ----------
+    private val releasesApi =
+        "https://api.github.com/repos/ali186-a/goraya-video-downloader/releases/latest"
+    private val apkDirectUrl =
+        "https://github.com/ali186-a/goraya-video-downloader/releases/latest/download/Goraya-Video-Downloader.apk"
+
+    private fun checkForUpdate() {
+        lifecycleScope.launch {
+            val latest: Int? = withContext(Dispatchers.IO) {
+                var result: Int? = null
+                try {
+                    val c = java.net.URL(releasesApi).openConnection() as java.net.HttpURLConnection
+                    c.connectTimeout = 8000
+                    c.readTimeout = 8000
+                    c.setRequestProperty("Accept", "application/vnd.github+json")
+                    try {
+                        if (c.responseCode == 200) {
+                            val body = c.inputStream.bufferedReader().readText()
+                            val tag = JSONObject(body).optString("tag_name")
+                            result = tag.substringAfterLast('.').toIntOrNull()
+                        }
+                    } finally {
+                        c.disconnect()
+                    }
+                } catch (e: Exception) {
+                    Log.w("Goraya", "update check skipped: ${e.message}")
+                }
+                result
+            }
+
+            val current: Long = try {
+                packageManager.getPackageInfo(packageName, 0).longVersionCode
+            } catch (e: Exception) {
+                Long.MAX_VALUE
+            }
+
+            if (latest != null && latest.toLong() > current && !isFinishing && !isDestroyed) {
+                showUpdateDialog()
+            }
+        }
+    }
+
+    private fun showUpdateDialog() {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle("نیا ورژن دستیاب ہے")
+            .setMessage("Goraya Video Downloader کا نیا ورژن آ چکا ہے۔ تازہ فیچرز اور بہتری کے لیے اپڈیٹ کریں۔")
+            .setPositiveButton("اپڈیٹ کریں") { _, _ ->
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkDirectUrl)))
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Link nahi khul saka", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("بعد میں", null)
+            .show()
     }
 
     // ---------- UI helpers ----------
