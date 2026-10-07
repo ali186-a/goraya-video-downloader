@@ -11,7 +11,7 @@ android {
         applicationId "com.goraya.videodownloader"
         minSdk 29
         targetSdk 34
-        versionCode 1
+        versionCode Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")
         versionName "1.0"
 
         ndk {
@@ -19,10 +19,22 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def ksPath = System.getenv("KEYSTORE_PATH")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
-            signingConfig signingConfigs.debug
+            signingConfig(System.getenv("KEYSTORE_PATH") ? signingConfigs.release : signingConfigs.debug)
         }
     }
 

@@ -4,3 +4,7 @@ build/
 local.properties
 .idea/
 *.apk
+
+*.jks
+keystore.b64
+keystore-info.txt
