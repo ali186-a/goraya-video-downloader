@@ -74,18 +74,6 @@ cat > app/src/main/res/layout/dialog_whatsapp.xml <<'WA_EOF'
         android:textSize="15sp"
         app:backgroundTint="#25D366"
         app:cornerRadius="28dp" />
-
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnWaConfirm"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:minHeight="52dp"
-        android:text="میں نے Join کر لیا — Download کریں"
-        android:textSize="14sp"
-        app:cornerRadius="28dp" />
-
     <TextView
         android:id="@+id/btnWaClose"
         android:layout_width="wrap_content"

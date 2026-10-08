@@ -64,6 +64,7 @@ class MainActivity : AppCompatActivity() {
 
         b.btnDownload.setOnClickListener { startDownload() }
         b.btnCancel.setOnClickListener { cancelDownload() }
+        b.btnAd.setOnClickListener { openAdvertisement() }
         b.btnWhatsapp.setOnClickListener { openWhatsAppChannel() }
 
         initEngine()
@@ -369,6 +370,21 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("بعد میں", null)
             .show()
+    }
+
+    // ---------- Advertisement (Adsterra SmartLink) ----------
+    // Zone: smart-link-3506915 | Placement: Smartlink_1 (31619689)
+    // Link badalna ho to sirf neeche wali value badlein.
+    private val ADSTERRA_SMARTLINK = "https://asiafilm.org/4/9a7912e1c40f447afcb67add365f3e88"
+
+    private fun openAdvertisement() {
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ADSTERRA_SMARTLINK)))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this, "Browser nahi mila", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Link nahi khul saka", Toast.LENGTH_SHORT).show()
+        }
     }
 
     // ---------- UI helpers ----------
