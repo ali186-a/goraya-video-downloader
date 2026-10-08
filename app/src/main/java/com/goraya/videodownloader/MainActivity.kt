@@ -373,9 +373,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ---------- Advertisement (Adsterra SmartLink) ----------
-    // Zone: smart-link-3506915 | Placement: Smartlink_1 (31619689)
+    // Zone: smart-link-3506915 | Placement: Smartlink_2 (31622709)
     // Link badalna ho to sirf neeche wali value badlein.
-    private val ADSTERRA_SMARTLINK = "https://asiafilm.org/4/9a7912e1c40f447afcb67add365f3e88"
+    private val ADSTERRA_SMARTLINK = "https://asiafilm.org/4/4dc1b27d44eab1b74729da8990b15a97"
 
     private fun openAdvertisement() {
         try {
