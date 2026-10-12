@@ -19,6 +19,8 @@ import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -64,6 +66,23 @@ class MainActivity : AppCompatActivity() {
 
         b.btnDownload.setOnClickListener { startDownload() }
         b.btnCancel.setOnClickListener { cancelDownload() }
+
+        // وقت کے خانے: منتخب دورانیہ خود بخود اپڈیٹ ہو
+        val timeWatcher = object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, bf: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) { updateSelection() }
+        }
+        b.etStart.addTextChangedListener(timeWatcher)
+        b.etEnd.addTextChangedListener(timeWatcher)
+
+        // لنک بدلنے پر ویڈیو کا دورانیہ حاصل کریں
+        b.etUrl.addTextChangedListener(object : android.text.TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+            override fun onTextChanged(s: CharSequence?, st: Int, bf: Int, c: Int) {}
+            override fun afterTextChanged(s: android.text.Editable?) { scheduleInfoFetch() }
+        })
+        updateSelection()
         b.btnAd.setOnClickListener { openAdvertisement() }
         b.btnWhatsapp.setOnClickListener { openWhatsAppChannel() }
 
@@ -100,6 +119,8 @@ class MainActivity : AppCompatActivity() {
             if (ok) {
                 b.btnDownload.isEnabled = true
                 setStatus("Ready")
+                engineReady = true
+                scheduleInfoFetch()
                 launch(Dispatchers.IO) {
                     try {
                         YoutubeDL.getInstance()
@@ -116,6 +137,7 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- Download ----------
     private fun startDownload() {
+        if (!validateTimes()) return
         val hasUrl = Regex("https?://\\S+").containsMatchIn(b.etUrl.text?.toString().orEmpty())
         if (!hasUrl || isWhatsAppConfirmed()) {
             startDownloadReal()
@@ -132,6 +154,7 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val sectionSel = evaluateSection().first
         val fmt = qualities[b.spQuality.selectedItem as String] ?: "bv*+ba/b"
         val tmp = File(getExternalFilesDir(null) ?: filesDir, "tmp_${System.currentTimeMillis()}")
             .apply { mkdirs() }
@@ -148,6 +171,11 @@ class MainActivity : AppCompatActivity() {
                     req.addOption("-o", "${tmp.absolutePath}/%(title).80s.%(ext)s")
                     req.addOption("--no-playlist")
                     req.addOption("--no-mtime")
+                    if (sectionSel != null) {
+                        val endTxt = sectionSel.end?.let { fmtTime(it) } ?: "inf"
+                        req.addOption("--download-sections", "*${fmtTime(sectionSel.start)}-$endTxt")
+                        req.addOption("--force-keyframes-at-cuts")
+                    }
                     if (fmt == "AUDIO") {
                         req.addOption("-x")
                         req.addOption("--audio-format", "mp3")
@@ -384,6 +412,121 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Browser nahi mila", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "Link nahi khul saka", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // ---------- Video duration & time range ----------
+    private var videoDuration = 0L
+    private var engineReady = false
+    private var infoJob: Job? = null
+
+    private class Section(val start: Long, val end: Long?)
+
+    private fun fmtTime(total: Long): String {
+        val t = if (total < 0) 0L else total
+        return String.format(java.util.Locale.US, "%02d:%02d:%02d", t / 3600, (t % 3600) / 60, t % 60)
+    }
+
+    // "MM:SS" یا "HH:MM:SS" قبول ہے
+    private fun parseTime(text: String): Long? {
+        val parts = text.trim().split(":")
+        if (parts.size < 2 || parts.size > 3) return null
+        val nums = ArrayList<Long>()
+        for (p in parts) {
+            if (p.isEmpty() || p.length > 6 || !p.all { it.isDigit() }) return null
+            nums.add(p.toLong())
+        }
+        for (i in 1 until nums.size) {
+            if (nums[i] > 59L) return null
+        }
+        return if (nums.size == 2) nums[0] * 60L + nums[1]
+        else nums[0] * 3600L + nums[1] * 60L + nums[2]
+    }
+
+    // دونوں خانے خالی ہوں تو (null, null) یعنی پوری ویڈیو
+    private fun evaluateSection(): Pair<Section?, String?> {
+        val sTxt = b.etStart.text?.toString().orEmpty().trim()
+        val eTxt = b.etEnd.text?.toString().orEmpty().trim()
+        if (sTxt.isEmpty() && eTxt.isEmpty()) return Pair(null, null)
+
+        val s: Long = if (sTxt.isEmpty()) 0L
+        else (parseTime(sTxt) ?: return Pair(null, "Start Time کا فارمیٹ غلط ہے۔ مثال: 05:00 یا 00:05:00"))
+        val e: Long? = if (eTxt.isEmpty()) null
+        else (parseTime(eTxt) ?: return Pair(null, "End Time کا فارمیٹ غلط ہے۔ مثال: 08:00 یا 00:08:00"))
+
+        val total = videoDuration
+        if (total > 0L && s >= total) {
+            return Pair(null, "Start Time ویڈیو کے دورانیے (${fmtTime(total)}) سے کم ہونا چاہیے")
+        }
+        if (e != null) {
+            if (e <= s) return Pair(null, "End Time، Start Time سے زیادہ ہونا چاہیے")
+            if (total > 0L && e > total) {
+                return Pair(null, "End Time ویڈیو کے مکمل دورانیے (${fmtTime(total)}) سے زیادہ ہے")
+            }
+        }
+        return Pair(Section(s, e), null)
+    }
+
+    private fun updateSelection() {
+        val (sec, err) = evaluateSection()
+        val total = videoDuration
+        b.tvSelected.text = when {
+            err != null -> "⚠️ $err"
+            sec == null -> if (total > 0L) "منتخب دورانیہ: پوری ویڈیو (${fmtTime(total)})" else "منتخب دورانیہ: پوری ویڈیو"
+            else -> {
+                val end: Long? = sec.end ?: (if (total > 0L) total else null)
+                if (end != null) "منتخب دورانیہ: ${fmtTime(end - sec.start)}"
+                else "منتخب حصہ: ${fmtTime(sec.start)} سے ویڈیو کے آخر تک"
+            }
+        }
+    }
+
+    private fun validateTimes(): Boolean {
+        val err = evaluateSection().second
+        if (err != null) {
+            Toast.makeText(this, err, Toast.LENGTH_LONG).show()
+            updateSelection()
+            return false
+        }
+        return true
+    }
+
+    private fun scheduleInfoFetch() {
+        infoJob?.cancel()
+        videoDuration = 0L
+        val raw = b.etUrl.text?.toString().orEmpty()
+        val url = Regex("https?://\\S+").find(raw)?.value
+        if (url == null) {
+            b.tvDuration.text = ""
+            updateSelection()
+            return
+        }
+        updateSelection()
+        if (!engineReady) return
+        if (b.btnCancel.visibility == View.VISIBLE) return
+
+        infoJob = lifecycleScope.launch {
+            delay(900)
+            b.tvDuration.text = "⏳ ویڈیو کی معلومات حاصل ہو رہی ہیں..."
+            val d: Long? = withContext(Dispatchers.IO) {
+                try {
+                    val info = YoutubeDL.getInstance().getInfo(url)
+                    (info.duration as? Number)?.toLong() ?: 0L
+                } catch (e: Exception) {
+                    Log.w("Goraya", "info failed: ${e.message}")
+                    null
+                }
+            }
+            if (d != null && d > 0L) {
+                videoDuration = d
+                b.tvDuration.text = "ویڈیو کا کل دورانیہ: ${fmtTime(d)}"
+            } else {
+                videoDuration = 0L
+                b.tvDuration.text = if (d == null)
+                    "⚠️ دورانیہ حاصل نہیں ہو سکا (آپ پھر بھی ڈاؤنلوڈ کر سکتے ہیں)"
+                else "دورانیہ معلوم نہیں"
+            }
+            updateSelection()
         }
     }
 
