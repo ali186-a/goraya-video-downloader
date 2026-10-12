@@ -388,7 +388,7 @@ class MainActivity : AppCompatActivity() {
     private fun showUpdateDialog() {
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle("نیا ورژن دستیاب ہے")
-            .setMessage("Goraya Video Downloader کا نیا ورژن آ چکا ہے۔ تازہ فیچرز اور بہتری کے لیے اپڈیٹ کریں۔")
+            .setMessage("All Video Downloader کا نیا ورژن آ چکا ہے۔ تازہ فیچرز اور بہتری کے لیے اپڈیٹ کریں۔")
             .setPositiveButton("اپڈیٹ کریں") { _, _ ->
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(apkDirectUrl)))

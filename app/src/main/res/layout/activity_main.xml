@@ -10,7 +10,7 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Goraya Video Downloader"
+        android:text="All Video Downloader"
         android:textSize="22sp"
         android:textStyle="bold"
         android:paddingBottom="12dp" />
